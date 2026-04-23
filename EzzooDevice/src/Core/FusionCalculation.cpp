@@ -308,7 +308,7 @@ namespace Ezzoo {
             s_GPSTrigger = 0 ;
             //auto SpeedXY = ConvertSpeedToVedctor(Speed, SpeedCours);
             //m_KalmanFilter.UpdateVelocityZUPT({SpeedXY.first, SpeedXY.second, 0.0f}, Eigen::Matrix3f::Identity() * 0.5);
-            //m_KalmanFilter.UpdatePosition({XY.first, XY.second, 0.0f}, Eigen::Matrix3f::Identity() * 0.5f );
+            m_KalmanFilter.UpdatePosition({XY.first, XY.second, 0.0f}, Eigen::Matrix3f::Identity() * 0.5f );
         }   
         
         PosState.x = m_KalmanFilter.x(0);
