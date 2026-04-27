@@ -15,164 +15,6 @@ using json = nlohmann::json;
 
 namespace Ezzoo {
 
-    
-   struct KalmanPV 
-   {
-        Eigen::Vector3f p;
-        Eigen::Vector3f v;
-        Eigen::Vector3f ba;
-
-        Eigen::Matrix<float, NX, 1> vec() const 
-        {
-            Eigen::Matrix<float, NX, 1> x;
-            x.segment<3>(0) = p;
-            x.segment<3>(3) = v;
-            x.segment<3>(6) = ba;
-            return x;
-        }
-
-        void fromVec(const Eigen::Matrix<float, NX, 1>& x) {
-            p  = x.segment<3>(0);
-            v  = x.segment<3>(3);
-            ba = x.segment<3>(6);
-        }
-    };
-
-   struct KalmanFilter 
-   {
-        Eigen::Matrix<float, NX, 1>  x;           // state vector
-        Eigen::Matrix<float, NX, NX> P;          // covariance
-        Eigen::Matrix<float, NX, NX> Q;          // process noise (constant parts)
-
-        KalmanFilter() 
-        {
-            x.setZero();
-            P.setIdentity();
-            Q.setZero();
-
-            Init(Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero(), 1.0f, 0.1f, 0.01f);
-        }
-
-        void Init(const Eigen::Vector3f &p0, const Eigen::Vector3f &v0, const Eigen::Vector3f &ba0, float pos_var, float vel_var, float ba_var)
-        {
-            x.segment<3>(0) = p0;
-            x.segment<3>(3) = v0;
-            x.segment<3>(6) = ba0;
-
-            P.setZero();
-            P.block<3,3>(0,0) = Eigen::Matrix3f::Identity() * pos_var;
-            P.block<3,3>(3,3) = Eigen::Matrix3f::Identity() * vel_var;
-            P.block<3,3>(6,6) = Eigen::Matrix3f::Identity() * ba_var;
-
-            Q.setZero();
-        }
-
-        void Predict(const Eigen::Quaternionf &q_wb, const Eigen::Vector3f &a_meas_body, float dt, float sigma_acc, float sigma_ba_rw)
-        {
-            const Eigen::Vector3f g(0.0f,0.0f,-9.80665f);
-
-            Eigen::Vector3f p  = x.segment<3>(0);
-            Eigen::Vector3f v  = x.segment<3>(3);
-            Eigen::Vector3f ba = x.segment<3>(6);
-
-            Eigen::Vector3f a_unbiased_body = a_meas_body - ba;
-            Eigen::Vector3f a_world = q_wb * a_unbiased_body;
-            Eigen::Vector3f a_wg = a_world + g;
-
-            for(int i=0;i<3;i++)
-            {
-                if(fabs(a_wg[i]) < 0.07f)
-                    a_wg[i] = 0;
-            }
-
-            Eigen::Vector3f p_pred  = p + v*dt + 0.5f *a_wg*dt*dt;
-            Eigen::Vector3f v_pred  = v + a_wg*dt;
-            Eigen::Vector3f ba_pred = ba;
-
-
-            bool stationary = (a_wg.norm() < 0.7f);
- 
-            if(stationary)
-            {
-                v_pred.setZero();
-            }
-            else
-            {
-                v_pred *= 0.995f;
-            }
-
-            float maxVel = 3.0f;
-
-            if(v_pred.norm() > maxVel)
-            {
-                v_pred = v_pred.normalized() * maxVel;
-            }
-
-
-            x.segment<3>(0) = p_pred;
-            x.segment<3>(3) = v_pred;
-            x.segment<3>(6) = ba_pred;
-
-            Eigen::Matrix<float, NX, NX> F = Eigen::Matrix<float, NX, NX>::Identity();
-            F.block<3,3>(0,3) = Eigen::Matrix3f::Identity() * dt;
-
-            Eigen::Matrix3f R = q_wb.toRotationMatrix();
-            Eigen::Matrix3f dA_dba = -R;
-
-            F.block<3,3>(0,6) = 0.5f * dt*dt * dA_dba;
-            F.block<3,3>(3,6) = dt * dA_dba;
-
-            Eigen::Matrix<float, NX, NX> Qd = Eigen::Matrix<float, NX, NX>::Zero();
-            float s2 = sigma_acc * sigma_acc;
-
-            Qd.block<3,3>(0,0) = Eigen::Matrix3f::Identity() * (s2 * dt*dt*dt*dt / 4.0f);
-            Qd.block<3,3>(0,3) = Eigen::Matrix3f::Identity() * (s2 * dt*dt*dt / 2.0f);
-            Qd.block<3,3>(3,0) = Qd.block<3,3>(0,3).transpose();
-            Qd.block<3,3>(3,3) = Eigen::Matrix3f::Identity() * (s2 * dt*dt);
-            Qd.block<3,3>(6,6) = Eigen::Matrix3f::Identity() * (sigma_ba_rw*sigma_ba_rw * dt);
-
-            P = F * P * F.transpose() + Qd;
-            P = 0.5f * (P + P.transpose());
-        }
-
-        void UpdateVelocityZUPT(const Eigen::Vector3f& z_vel, const Eigen::Matrix3f& R_vel)
-        {
-            Eigen::Matrix<float,3,NX> H = Eigen::Matrix<float,3,NX>::Zero();
-            H.block<3,3>(0,3) = Eigen::Matrix3f::Identity();
-
-            Eigen::Vector3f y = z_vel - H * x;
-
-            Eigen::Matrix3f S = H * P * H.transpose() + R_vel;
-            Eigen::Matrix<float,NX,3> K = P * H.transpose() * S.inverse();
-
-            x = x + K * y;
-
-            Eigen::Matrix<float,NX,NX> I = Eigen::Matrix<float,NX,NX>::Identity();
-            P = (I - K * H) * P;
-
-            P = 0.5f * (P + P.transpose());
-        }
-
-        void UpdatePosition(const Eigen::Vector3f& z_pos, const Eigen::Matrix3f& R_pos)
-        {
-            Eigen::Matrix<float,3,NX> H = Eigen::Matrix<float,3,NX>::Zero();
-            H.block<3,3>(0,0) = Eigen::Matrix3f::Identity();
-
-            Eigen::Vector3f y = z_pos - H * x;
-            Eigen::Matrix3f S = H * P * H.transpose() + R_pos;
-            Eigen::Matrix<float,NX,3> K = P * H.transpose() * S.inverse();
-
-            x = x + K * y;
-
-            Eigen::Matrix<float,NX,NX> I = Eigen::Matrix<float,NX,NX>::Identity();
-            P = (I - K * H) * P;
-
-            P = 0.5f * (P + P.transpose());
-        }
-    };
-
-
-    static KalmanFilter m_KalmanFilter;
 
 /////////////////////////////////////////////////////////////////////////////////////////
     static int s_GPSTrigger = 0;
@@ -196,20 +38,28 @@ namespace Ezzoo {
 
     }
 
+    void FusionCalculation::SetKalmanConfig(const Configuration& conf) 
+    { 
+       m_KalmanFilter.SetConfig(conf);
+    }
+
+    Configuration& FusionCalculation::GetKalmanConfig () 
+    { 
+        return m_KalmanFilter.GetConfig();
+    }
+
     void FusionCalculation::Attach () 
     {
 
         //Kalman filter covariance init;
-        PosState = glm::vec3(0.0f, 0.0f, 0.0f);
-        VelState = glm::vec3(0.0f, 0.0f, 0.0f);
+        m_PosState = glm::vec3(0.0f, 0.0f, 0.0f);
+        m_VelState = glm::vec3(0.0f, 0.0f, 0.0f);
    
 
     }
 
     void FusionCalculation::Update (Buffer& buffer) 
     {   
-          
-        
         
         try
         {
@@ -254,8 +104,8 @@ namespace Ezzoo {
 
                 Long       = (float)JsonObj["Gps"][0];
                 Lat        = (float)JsonObj["Gps"][1];
-                //Speed      = (float)JsonObj["Gps"][2].toDouble();
-                //SpeedCours = (float)JsonObj["Gps"][3].toDouble();
+                Speed      = (float)JsonObj["Gps"][2];
+                SpeedCours = (float)JsonObj["Gps"][3];
                 
                 //std::cout << s_GPSTrigger << std::endl;
                 if (s_GPSTrigger < AVERAGE_SIZE)
@@ -290,7 +140,7 @@ namespace Ezzoo {
             
         }
         LastTime = now ;                        
-        m_KalmanFilter.Predict(eQ, {accXMeter, accYMeter, accZMeter}, dt, 0.5f, 0.01f);
+        m_KalmanFilter.Predict(eQ, {accXMeter, accYMeter, accZMeter}, dt, 0.01f);
         
         
        static size_t f = 0;
@@ -299,7 +149,7 @@ namespace Ezzoo {
            m_RefLat = Lat;
            m_RefLng = Long;   
            f ++;
-        }
+       }
         
         
         if (s_GPSTrigger >= AVERAGE_SIZE)
@@ -308,16 +158,11 @@ namespace Ezzoo {
             s_GPSTrigger = 0 ;
             //auto SpeedXY = ConvertSpeedToVedctor(Speed, SpeedCours);
             //m_KalmanFilter.UpdateVelocityZUPT({SpeedXY.first, SpeedXY.second, 0.0f}, Eigen::Matrix3f::Identity() * 0.5);
-            m_KalmanFilter.UpdatePosition({XY.first, XY.second, 0.0f}, Eigen::Matrix3f::Identity() * 0.5f );
+            m_KalmanFilter.UpdatePosition({XY.first, XY.second, 0.0f}, Eigen::Matrix3f::Identity());
         }   
         
-        PosState.x = m_KalmanFilter.x(0);
-        PosState.y = m_KalmanFilter.x(1);
-        PosState.z = m_KalmanFilter.x(2);
-
-        VelState.x = m_KalmanFilter.x(3);
-        VelState.y = m_KalmanFilter.x(4);
-        VelState.z = m_KalmanFilter.x(5);
+        m_PosState = m_KalmanFilter.GetPositionState();
+        m_VelState = m_KalmanFilter.GetVelocityState();
 
     }
 
@@ -337,8 +182,6 @@ namespace Ezzoo {
     {
         float x, y = 0.0f;
         
-        //if ((lat - m_RefLat) <= 0.00003f || (lng - m_RefLng) <= 0.00003f) return {xf, yf};
-
         m_Index = (m_Index + 1) % AVERAGE_SIZE;
         float Lat_Rad = lat * M_PI / 180.0f;
         float Lng_Rad = lng * M_PI / 180.0f;
@@ -351,10 +194,6 @@ namespace Ezzoo {
 
         m_xBuf[m_Index] = x;
         m_yBuf[m_Index] = y;
-       
-        //ProcessGPS (x, y, xf, yf);
-
-       // return {xf, yf};
 
     }
 
@@ -382,40 +221,10 @@ namespace Ezzoo {
 
     std::pair <float, float> FusionCalculation::ProcessGPS ()
     {
-       
-
-        //m_Index = (m_Index + 1) % AVERAGE_SIZE;
-
-        //if (m_Index == 0) m_Filled = true;
-
-        //float xMed = x;
-        //float yMed = y;
-        //if (m_Filled)
-        //{
-            /*xMed*/float xf = Average(m_xBuf, AVERAGE_SIZE);
-            /*yMed*/float yf = Average(m_yBuf, AVERAGE_SIZE);
-        //}
-
-        //if (!m_Initialized)
-        //{
-        //    m_xLP = xMed;
-        //    m_yLP = yMed;
-        //    m_Initialized = true;
-        //}
-
-        //m_xLP = ALPHA * xMed + (1.0f - ALPHA) * m_xLP;
-        //m_yLP = ALPHA * yMed + (1.0f - ALPHA) * m_yLP;
-
-        //if ((fabs(m_xLP - xf) < DEAD_BAND)) m_xLP = xf;
-        //if ((fabs(m_yLP - yf) < DEAD_BAND)) m_yLP = yf;
-        //else 
-        //{
-        //    xf = x;//m_xLP;
-        //    yf = y;//m_yLP;
-        //}
+        float xf = Average(m_xBuf, AVERAGE_SIZE);
+        float yf = Average(m_yBuf, AVERAGE_SIZE);
 
         return {xf, yf};
-
     }
 
     void FusionCalculation::OnImGuiRender ()
@@ -424,6 +233,7 @@ namespace Ezzoo {
         //ImGui::SetNextWindowSize(ImVec2(250, 370));
     
         ImGui::SetNextWindowPos(ImVec2{685.0f, 40.0f});
+        ImGui::SetNextItemWidth(200.0f);
         ImGui::Begin("Fusion Values");
 
         ImGui::InputFloat("RefLng", &m_RefLng, 0.0f, 0.0f, "%0.5f");
@@ -457,8 +267,8 @@ namespace Ezzoo {
         ImGui::Separator();
         ImGui::Separator();
 
-        ImGui::Text("Pos:[%0.2f, %0.2f, %0.2f]\n", m_KalmanFilter.x(0), m_KalmanFilter.x(1), m_KalmanFilter.x(2));
-        ImGui::Text("Velocity:[%0.2f, %0.2f, %0.2f]\n",  m_KalmanFilter.x(3), m_KalmanFilter.x(4), m_KalmanFilter.x(5));
+        ImGui::Text("Pos:[%0.2f, %0.2f, %0.2f]\n", m_PosState.x, m_PosState.y, m_PosState.z);
+        ImGui::Text("Velocity:[%0.2f, %0.2f, %0.2f]\n",  m_VelState.x, m_VelState.y, m_VelState.z);
 
         ImGui::Separator();
         ImGui::Separator();
