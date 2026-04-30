@@ -5,11 +5,15 @@
 #include "Core/Layer.h"
 
 #include "Renderer/Buffers.h"
-#include "Renderer/EditorCamera.h"
+// #include "Renderer/EditorCamera.h"
+#include "Renderer/Camera.h"
 #include "Renderer/FrameBuffer.h"
 #include "Renderer/RendererCommand.h"
 #include "Renderer/Shader.h"
 #include "Renderer/VertexArray.h"
+
+#include "Math/PresProjection.h"
+#include "Math/WorldTransform.h"
 
 #include "Platform/OpenGL/OpenGLShader.h"
 
@@ -29,14 +33,15 @@ namespace EMWebSocket {
 
 EMSCRIPTEN_WEBSOCKET_T socket;
 
-static EM_BOOL OnOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) 
-{
+static EM_BOOL OnOpen(int eventType, const EmscriptenWebSocketOpenEvent *e,
+                      void *userData) {
   printf("Socket Connected\n");
   s_ConnectFlag = true;
   return EM_TRUE;
 }
-static EM_BOOL OnMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) 
-{
+static EM_BOOL OnMessage(int eventType,
+                         const EmscriptenWebSocketMessageEvent *e,
+                         void *userData) {
   char data[1024] = "\0";
   strcpy(data, (const char *)e->data);
 
@@ -49,15 +54,14 @@ static EM_BOOL OnMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
 
   return EM_TRUE;
 }
-static EM_BOOL OnClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) 
-{
+static EM_BOOL OnClose(int eventType, const EmscriptenWebSocketCloseEvent *e,
+                       void *userData) {
   printf("Socket Closed\n");
   s_ConnectFlag = false;
   return EM_TRUE;
 }
 
-static void SendRequest(const char *data) 
-{
+static void SendRequest(const char *data) {
   printf("Sent Data: %s\n", data);
   emscripten_websocket_send_utf8_text(socket, data);
 }
@@ -77,7 +81,8 @@ static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) {
   socket = emscripten_websocket_new(&attr);
 
   emscripten_websocket_set_onopen_callback(socket, NULL, OnOpen);
-  emscripten_websocket_set_onmessage_callback(socket, (void *)&fusion, OnMessage);
+  emscripten_websocket_set_onmessage_callback(socket, (void *)&fusion,
+                                              OnMessage);
   emscripten_websocket_set_onclose_callback(socket, NULL, OnClose);
 }
 } // namespace EMWebSocket
@@ -87,36 +92,44 @@ static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) {
 class ExampleLayer : public Ezzoo::Layer {
 
 public:
-  ExampleLayer()
-      : Layer("ExampleLayer"),
-        m_EditorCamera(30.0f, 900.0f / 600.0f, 0.1f, 1000.0f) {
-    m_VertexArray = Ezzoo::VertexArray::Create();
-    m_VertexArray->Bind();
-    float vertices[3 * 8] = {-0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f,
-                             0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f,
-                             -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,
-                             0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f};
-    m_VertexBuffer = Ezzoo::VertexBuffer::Create(vertices, sizeof(vertices));
+  ExampleLayer() : Layer("ExampleLayer") {
+    m_CubeVertexArray = Ezzoo::VertexArray::Create();
+    m_CubeVertexArray->Bind();
+    float cubeVertices[3 * 8] = {-0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f,
+                                 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f,
+                                 -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,
+                                 0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f};
+    m_CubeVertexBuffer =
+        Ezzoo::VertexBuffer::Create(cubeVertices, sizeof(cubeVertices));
+    m_CubeVertexBuffer->SetLayout(
+        {{Ezzoo::ShaderDataType::Float3, "a_Position"}});
+    m_CubeVertexArray->AddVertexBuffer(m_CubeVertexBuffer);
+    uint32_t cubeIndecies[36] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
+                                 4, 0, 3, 3, 7, 4, 1, 5, 6, 6, 2, 1,
+                                 4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3};
+    m_CubeIndexBuffer = Ezzoo::IndexBuffer::Create(
+        cubeIndecies, sizeof(cubeIndecies) / sizeof(uint32_t));
+    m_CubeVertexArray->SetIndexBuffer(m_CubeIndexBuffer);
 
-    m_VertexBuffer->SetLayout({{Ezzoo::ShaderDataType::Float3, "a_Position"}});
-
-    m_VertexArray->AddVertexBuffer(m_VertexBuffer);
-
-    uint32_t indecies[36] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
-                             4, 0, 3, 3, 7, 4, 1, 5, 6, 6, 2, 1,
-                             4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3};
-    m_IndexBuffer = Ezzoo::IndexBuffer::Create(indecies, sizeof(indecies) /
-                                                             sizeof(uint32_t));
-    m_VertexArray->SetIndexBuffer(m_IndexBuffer);
+    // floor
+    m_FloorVertexArray = Ezzoo::VertexArray::Create();
+    m_FloorVertexArray->Bind();
+    float floorVertices[3 * 4] = {-1.0, 0.0, -1.0, 1.0,  0.0, -1.0,
+                                  1.0,  0.0, 1.0,  -1.0, 0.0, 1.0};
+    m_FloorVertexBuffer = Ezzoo::VertexBuffer::Create(floorVertices, sizeof(floorVertices));
+    m_FloorVertexBuffer->SetLayout({{Ezzoo::ShaderDataType::Float3, "a_Position"}});
+    m_FloorVertexArray->AddVertexBuffer(m_FloorVertexBuffer);
+    uint32_t floorIndecies[6] = {0, 2, 1, 2, 0, 3};
+    m_FloorIndexBuffer = Ezzoo::IndexBuffer::Create(floorIndecies, sizeof(floorIndecies) / sizeof(uint32_t));
+    m_FloorVertexArray->SetIndexBuffer(m_FloorIndexBuffer);
 
 #ifndef __EMSCRIPTEN__
-    // auto cubeShader = m_Shader.Load("Cube",
+    // auto cubeShader = m_CubeShader.Load("Cube",
     // "Resources/Shaders/CubeShader.vertex");
 #else
-    m_Shader = Ezzoo::Shader::Create("CubeShaderES",
-                                     "Resources/Shaders/CubeShaderES.vertex",
-                                     "Resources/Shaders/CubeShaderES.frag");
-    // auto cubeShader = m_ShaderLib.Load("Cube",
+    m_CubeShader = Ezzoo::Shader::Create("CubeShaderES", "Resources/Shaders/CubeShaderES.vertex", "Resources/Shaders/CubeShaderES.frag");
+    m_EndlessShader = Ezzoo::Shader::Create("EndLessShader", "Resources/Shaders/EndLessShader.vertex","Resources/Shaders/EndLessShader.frag");
+    // auto cubeShader = m_CubeShaderLib.Load("Cube",
     // "Resources/Shaders/CubeShaderES.glsl");
 #endif
 
@@ -126,24 +139,38 @@ public:
 
   virtual void OnAttach() override 
   {
+
+    auto &app = Ezzoo::Application::GetApplication();
+    float width = (float)(app.GetWindow().GetWidth());
+    float height = (float)(app.GetWindow().GetHeight());
+
+    float distance = 1.0f / (tanf(ANGLETORADIAN(45.0f / 2.0f)));
+    float aspectRation = (width / height);
+    float near = 1.0f;
+    float far = 100.0f;
+    float zRange = near - far;
+    float A = ((-far - near) / zRange);
+    float B = ((2.0f * far * near) / zRange);
+
+    m_PresProjection.SetPresProjection(distance, aspectRation, A, B);
+    m_Camera = Ezzoo::Camera(width, height, Ezzoo::Vector3f(0.0f, 0.0f, 0.0f),Ezzoo::Vector3f(0.0f, 0.0f, 1.0f),  Ezzoo::Vector3f(0.0f, 1.0f, 0.0f));
+
     Ezzoo::FrameBufferSpecification specs;
-    specs.Attachments = {Ezzoo::FrameBufferTextureFormate::RGBA8,
-                         Ezzoo::FrameBufferTextureFormate::Depth};
+    specs.Attachments = {Ezzoo::FrameBufferTextureFormate::RGBA8,Ezzoo::FrameBufferTextureFormate::Depth};
     specs.Width = 700;
     specs.Height = 400;
     m_FrameBuffer = Ezzoo::FrameBuffer::Create(specs);
-
   }
   virtual void OnDetach() override {}
   virtual void OnUpdate(Ezzoo::TimeStep ts) override 
   {
-    if (Ezzoo::FrameBufferSpecification spec = m_FrameBuffer->GetSpecification(); m_ViewPortSize.x > 0.0f && m_ViewPortSize.y > 0.0f && (spec.Width != (uint32_t)m_ViewPortSize.x || spec.Height != (uint32_t)m_ViewPortSize.y)) 
+    if (Ezzoo::FrameBufferSpecification spec = m_FrameBuffer->GetSpecification(); m_ViewPortSize.x > 0.0f && m_ViewPortSize.y > 0.0f &&(spec.Width != (uint32_t)m_ViewPortSize.x ||
+         spec.Height != (uint32_t)m_ViewPortSize.y)) 
     {
 
-      m_FrameBuffer->Resize((uint32_t)m_ViewPortSize.x,
-                            (uint32_t)m_ViewPortSize.y);
+      m_FrameBuffer->Resize((uint32_t)m_ViewPortSize.x, (uint32_t)m_ViewPortSize.y);
       // m_CameraController.OnResize(m_ViewPortSize.x, m_ViewPortSize.y);
-      m_EditorCamera.SetViewportSize(m_ViewPortSize.x, m_ViewPortSize.y);
+      m_Camera.SetViewportSize(m_ViewPortSize.x, m_ViewPortSize.y);
     }
 
     m_FrameBuffer->Bind();
@@ -152,43 +179,71 @@ public:
     Ezzoo::RendererCommand::ClearColor();
 
     // m_FrameBuffer->ClearAttachment(1, -1);
-    m_EditorCamera.OnUpdate(ts);
+    m_Camera.OnUpdate(ts);
 
     float yaw = m_FusionCalculation.Yaw;
     float pitch = m_FusionCalculation.Pitch;
     float roll = m_FusionCalculation.Roll;
 
-    glm::mat4 model =
+    /*glm::mat4 model =
         glm::translate(glm::mat4(1.0f), m_FusionCalculation.GetPosState()) *
         glm::rotate(glm::mat4(1.0f), glm::radians(yaw), {1.0f, 0.0f, 0.0f}) *
         glm::rotate(glm::mat4(1.0f), glm::radians(pitch), {0.0f, 1.0f, 0.0f}) *
         glm::rotate(glm::mat4(1.0f), glm::radians(roll), {0.0f, 0.0f, 1.0f}) *
         glm::scale(glm::mat4(1.0f), {0.3f, 0.3f, 0.3f});
 
-    glm::mat4 mvp = m_EditorCamera.GetViewProjection() * model;
+    glm::mat4 mvp = m_Camera.GetViewProjection() * model;*/
 
-    m_Shader->Bind();
-    std::dynamic_pointer_cast<Ezzoo::OpenGLShader>(m_Shader)->UploadUniformMat4("u_ViewProjection", mvp);
-    Ezzoo::Renderer::Submit(m_VertexArray, m_Shader);
+    auto &posVec = m_FusionCalculation.GetPosState();
+    m_CubeWorldTransform.SetTranslate(posVec.x, posVec.y, posVec.z);
+    m_CubeWorldTransform.SetRotate(yaw, pitch, roll);
+    m_CubeWorldTransform.SetScale(0.3f, 0.3f, 0.3f);
+
+    Ezzoo::Matrix4f model = m_CubeWorldTransform.GetTransform();
+    Ezzoo::Matrix4f proj = m_PresProjection.GetPresProjection();
+    Ezzoo::Matrix4f view = m_Camera.CalculateViewMatrix();
+    Ezzoo::Matrix4f mvp = proj * view * model;
+
+    m_CubeShader->Bind();
+    std::dynamic_pointer_cast<Ezzoo::OpenGLShader>(m_CubeShader)->UploadUniformMat4("u_ViewProjection", mvp.ToGLM());
+    Ezzoo::Renderer::Submit(m_CubeVertexArray, m_CubeShader);
+    m_CubeShader->Unbind();
+
+    // Floor
+    //m_FloorWorldTransform.SetTranslate(0.0f, 0.0f, 0.0f);
+    //m_FloorWorldTransform.SetRotate(0.0f, 0.0f, 0.0f);
+    //m_FloorWorldTransform.SetScale(1000.0f, 0.0f, 1000.0f);
+
+    //model = m_FloorWorldTransform.GetTransform();
+    mvp = proj * view ;//* model;
+
+    m_EndlessShader->Bind();
+    std::dynamic_pointer_cast<Ezzoo::OpenGLShader>(m_EndlessShader)->UploadUniformMat4("u_ViewProjection", mvp.ToGLM());
+    std::dynamic_pointer_cast<Ezzoo::OpenGLShader>(m_EndlessShader)->UploadUniformFloat3("gCameraWorldPos", m_Camera.GetPosition().ToGLM());
+    Ezzoo::Renderer::Submit(m_FloorVertexArray, m_EndlessShader);
+    m_EndlessShader->Unbind();
 
     m_FrameBuffer->UnBind();
   }
 
-  virtual void OnImGuiRender() override 
-  {
+  virtual void OnImGuiRender() override {
 
     // ImGui::SetNextWindowPos(ImVec2{400.0f, 300.0f});
-    ImGui::Begin("ViewPort", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoTitleBar);
+    ImGui::Begin("ViewPort", nullptr,
+                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoTitleBar);
 
     auto viewPortMinRegion = ImGui::GetWindowContentRegionMin();
     auto viewPortMaxRegion = ImGui::GetWindowContentRegionMax();
     auto viewPortOffset = ImGui::GetWindowPos();
-    m_ViewPortBounds[0] = {viewPortMinRegion.x + viewPortOffset.x, viewPortMinRegion.y + viewPortOffset.y};
-    m_ViewPortBounds[1] = {viewPortMaxRegion.x + viewPortOffset.x, viewPortMaxRegion.y + viewPortOffset.y};
+    m_ViewPortBounds[0] = {viewPortMinRegion.x + viewPortOffset.x,
+                           viewPortMinRegion.y + viewPortOffset.y};
+    m_ViewPortBounds[1] = {viewPortMaxRegion.x + viewPortOffset.x,
+                           viewPortMaxRegion.y + viewPortOffset.y};
 
     m_ViewPortHovered = ImGui::IsWindowHovered();
     m_ViewPortFocused = ImGui::IsWindowFocused();
-    Ezzoo::Application::GetApplication().GetImGuiLayer()->SetBlockEvents(!m_ViewPortHovered && !m_ViewPortFocused);
+    Ezzoo::Application::GetApplication().GetImGuiLayer()->SetBlockEvents(
+        !m_ViewPortHovered && !m_ViewPortFocused);
 
     ImVec2 viewPortPanelSize = ImGui::GetContentRegionAvail();
     m_ViewPortSize = {viewPortPanelSize.x, viewPortPanelSize.y};
@@ -201,7 +256,9 @@ public:
     }*/
 
     uint32_t id = m_FrameBuffer->GetColorAttachmentRendererID();
-    ImGui::Image((ImTextureID)(uint64_t)(id), ImVec2{m_ViewPortSize.x, m_ViewPortSize.y}, ImVec2{0, 1}, ImVec2{1, 0});
+    ImGui::Image((ImTextureID)(uint64_t)(id),
+                 ImVec2{m_ViewPortSize.x, m_ViewPortSize.y}, ImVec2{0, 1},
+                 ImVec2{1, 0});
 
     ImGui::End();
 
@@ -260,13 +317,18 @@ public:
 
     m_FusionCalculation.OnImGuiRender();
   }
-  virtual void OnEvent(Ezzoo::Event &e) override { m_EditorCamera.OnEvent(e); }
+  virtual void OnEvent(Ezzoo::Event &e) override {}
 
 private:
-  Ezzoo::Ref<Ezzoo::Shader> m_Shader;
-  Ezzoo::Ref<Ezzoo::VertexArray> m_VertexArray;
-  Ezzoo::Ref<Ezzoo::VertexBuffer> m_VertexBuffer;
-  Ezzoo::Ref<Ezzoo::IndexBuffer> m_IndexBuffer;
+  Ezzoo::Ref<Ezzoo::Shader> m_CubeShader;
+  Ezzoo::Ref<Ezzoo::VertexArray> m_CubeVertexArray;
+  Ezzoo::Ref<Ezzoo::VertexBuffer> m_CubeVertexBuffer;
+  Ezzoo::Ref<Ezzoo::IndexBuffer> m_CubeIndexBuffer;
+
+  Ezzoo::Ref<Ezzoo::Shader> m_EndlessShader;
+  Ezzoo::Ref<Ezzoo::VertexArray> m_FloorVertexArray;
+  Ezzoo::Ref<Ezzoo::VertexBuffer> m_FloorVertexBuffer;
+  Ezzoo::Ref<Ezzoo::IndexBuffer> m_FloorIndexBuffer;
 
   Ezzoo::Ref<Ezzoo::FrameBuffer> m_FrameBuffer;
 
@@ -278,7 +340,11 @@ private:
   // Ezzoo::Ref<Ezzoo::Texture2D> m_Texture, m_LogoTexture;
 
   Ezzoo::FusionCalculation m_FusionCalculation;
-  Ezzoo::EditorCamera m_EditorCamera;
+
+  Ezzoo::Camera m_Camera;
+  Ezzoo::PresProjection m_PresProjection;
+  Ezzoo::WorldTransform m_CubeWorldTransform;
+  Ezzoo::WorldTransform m_FloorWorldTransform;
 };
 // #endif
 

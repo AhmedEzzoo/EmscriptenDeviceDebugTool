@@ -71,7 +71,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmpk5dpzixl.js
+// include: /tmp/tmpu87_9r22.js
 
   if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
   Module['expectedDataFileDownloads']++;
@@ -201,25 +201,25 @@ Module['FS_createPath']("/Resources", "Shaders", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/Resources/Shaders/CubeShaderES.frag", "start": 0, "end": 112}, {"filename": "/Resources/Shaders/CubeShaderES.vertex", "start": 112, "end": 373}, {"filename": "/Resources/Shaders/imgui.ini", "start": 373, "end": 1381}], "remote_package_size": 1381});
+    loadPackage({"files": [{"filename": "/Resources/Shaders/CubeShaderES.frag", "start": 0, "end": 112}, {"filename": "/Resources/Shaders/CubeShaderES.vertex", "start": 112, "end": 373}, {"filename": "/Resources/Shaders/EndLessShader.frag", "start": 373, "end": 2582}, {"filename": "/Resources/Shaders/EndLessShader.vertex", "start": 2582, "end": 3022}, {"filename": "/Resources/Shaders/imgui.ini", "start": 3022, "end": 4030}], "remote_package_size": 4030});
 
   })();
 
-// end include: /tmp/tmpk5dpzixl.js
-// include: /tmp/tmp3pb4oqjw.js
+// end include: /tmp/tmpu87_9r22.js
+// include: /tmp/tmpazwd7j8o.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmp3pb4oqjw.js
-// include: /tmp/tmpuyw9n7ze.js
+  // end include: /tmp/tmpazwd7j8o.js
+// include: /tmp/tmpfkvayrm2.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmpuyw9n7ze.js
+  // end include: /tmp/tmpfkvayrm2.js
 
 
 var arguments_ = [];
@@ -8326,8 +8326,6 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
       return GLFW.monitors;
     };
 
-  var _glfwGetMouseButton = (winid, button) => GLFW.getMouseButton(winid, button);
-
   var _glfwGetTime = () => GLFW.getTime() - GLFW.initialTime;
 
   var _glfwGetVideoMode = (monitor) => 0;
@@ -9049,14 +9047,14 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('onSbrkGrow');
 }
 var ASM_CONSTS = {
-  167144: () => { document.getElementById('canvas').focus(); }
+  166712: () => { document.getElementById('canvas').focus(); }
 };
 
 // Imports from the Wasm binary.
-var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
-var _fflush = makeInvalidEarlyAccess('_fflush');
 var _malloc = makeInvalidEarlyAccess('_malloc');
 var _free = makeInvalidEarlyAccess('_free');
+var _fflush = makeInvalidEarlyAccess('_fflush');
+var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _strerror = makeInvalidEarlyAccess('_strerror');
@@ -9076,10 +9074,10 @@ var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 var wasmTable = makeInvalidEarlyAccess('wasmTable');
 
 function assignWasmExports(wasmExports) {
-  assert(typeof wasmExports['__main_argc_argv'] != 'undefined', 'missing Wasm export: __main_argc_argv');
-  assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
+  assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['__main_argc_argv'] != 'undefined', 'missing Wasm export: __main_argc_argv');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
@@ -9095,10 +9093,10 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['__cxa_get_exception_ptr'] != 'undefined', 'missing Wasm export: __cxa_get_exception_ptr');
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
-  _main = Module['_main'] = createExportWrapper('__main_argc_argv', 2);
-  _fflush = createExportWrapper('fflush', 1);
   _malloc = createExportWrapper('malloc', 1);
   _free = createExportWrapper('free', 1);
+  _fflush = createExportWrapper('fflush', 1);
+  _main = Module['_main'] = createExportWrapper('__main_argc_argv', 2);
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _strerror = createExportWrapper('strerror', 1);
@@ -9350,8 +9348,6 @@ var wasmImports = {
   /** @export */
   glfwGetMonitors: _glfwGetMonitors,
   /** @export */
-  glfwGetMouseButton: _glfwGetMouseButton,
-  /** @export */
   glfwGetTime: _glfwGetTime,
   /** @export */
   glfwGetVideoMode: _glfwGetVideoMode,
@@ -9462,8 +9458,6 @@ var wasmImports = {
   /** @export */
   invoke_vi,
   /** @export */
-  invoke_viff,
-  /** @export */
   invoke_vii,
   /** @export */
   invoke_viiffffiiii,
@@ -9568,54 +9562,10 @@ function invoke_viii(index,a1,a2,a3) {
   }
 }
 
-function invoke_iiii(index,a1,a2,a3) {
+function invoke_iifff(index,a1,a2,a3,a4) {
   var sp = stackSave();
   try {
-    return getWasmTableEntry(index)(a1,a2,a3);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_viiii(index,a1,a2,a3,a4) {
-  var sp = stackSave();
-  try {
-    getWasmTableEntry(index)(a1,a2,a3,a4);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_iif(index,a1,a2) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_iiffff(index,a1,a2,a3,a4,a5) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2,a3,a4,a5);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_viff(index,a1,a2,a3) {
-  var sp = stackSave();
-  try {
-    getWasmTableEntry(index)(a1,a2,a3);
+    return getWasmTableEntry(index)(a1,a2,a3,a4);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -9627,17 +9577,6 @@ function invoke_viiiiii(index,a1,a2,a3,a4,a5,a6) {
   var sp = stackSave();
   try {
     getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6);
-  } catch(e) {
-    stackRestore(sp);
-    if (e !== e+0) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_iifff(index,a1,a2,a3,a4) {
-  var sp = stackSave();
-  try {
-    return getWasmTableEntry(index)(a1,a2,a3,a4);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -9660,6 +9599,28 @@ function invoke_iiiiii(index,a1,a2,a3,a4,a5) {
   var sp = stackSave();
   try {
     return getWasmTableEntry(index)(a1,a2,a3,a4,a5);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_viiii(index,a1,a2,a3,a4) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)(a1,a2,a3,a4);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiii(index,a1,a2,a3) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -9788,10 +9749,32 @@ function invoke_iiji(index,a1,a2,a3) {
   }
 }
 
+function invoke_iif(index,a1,a2) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
 function invoke_viiiiifi(index,a1,a2,a3,a4,a5,a6,a7) {
   var sp = stackSave();
   try {
     getWasmTableEntry(index)(a1,a2,a3,a4,a5,a6,a7);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_iiffff(index,a1,a2,a3,a4,a5) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1,a2,a3,a4,a5);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;

@@ -11,6 +11,9 @@ namespace Ezzoo {
 
 	static bool s_GLFWInit{ false };
 
+	float WindowsWindow::m_LastMouseX = 0.0f;
+    float WindowsWindow::m_LastMouseY = 0.0f;
+
 	Window* Window::Create(const WindowProps& props)
 	{
 		return new WindowsWindow(props);
@@ -94,6 +97,9 @@ namespace Ezzoo {
 				WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 				MouseMoveEvent event((float)xpos, (float)ypos);
 				data.CallBack(event);
+
+				m_LastMouseX = xpos;
+				m_LastMouseY = ypos;
 			});
 
 		glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xoffset, double yoffset)

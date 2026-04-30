@@ -26,6 +26,11 @@ namespace Ezzoo {
 
 		inline virtual void* GetNativeWindow() const override { return m_Window; }
 
+
+	public :
+		static float m_LastMouseX;
+        static float m_LastMouseY;	
+
 	private :
 		void Init(const WindowProps& props);
 		void ShutDown();
