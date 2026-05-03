@@ -33,15 +33,14 @@ namespace EMWebSocket {
 
 EMSCRIPTEN_WEBSOCKET_T socket;
 
-static EM_BOOL OnOpen(int eventType, const EmscriptenWebSocketOpenEvent *e,
-                      void *userData) {
+static EM_BOOL OnOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData) 
+{
   printf("Socket Connected\n");
   s_ConnectFlag = true;
   return EM_TRUE;
 }
-static EM_BOOL OnMessage(int eventType,
-                         const EmscriptenWebSocketMessageEvent *e,
-                         void *userData) {
+static EM_BOOL OnMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) 
+{
   char data[1024] = "\0";
   strcpy(data, (const char *)e->data);
 
@@ -54,19 +53,21 @@ static EM_BOOL OnMessage(int eventType,
 
   return EM_TRUE;
 }
-static EM_BOOL OnClose(int eventType, const EmscriptenWebSocketCloseEvent *e,
-                       void *userData) {
+static EM_BOOL OnClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) 
+{
   printf("Socket Closed\n");
   s_ConnectFlag = false;
   return EM_TRUE;
 }
 
-static void SendRequest(const char *data) {
+static void SendRequest(const char *data) 
+{
   printf("Sent Data: %s\n", data);
   emscripten_websocket_send_utf8_text(socket, data);
 }
 
-static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) {
+static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) 
+{
   if (!emscripten_websocket_is_supported()) {
     printf("Websocket not Supported\n");
     return;
@@ -81,8 +82,7 @@ static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) {
   socket = emscripten_websocket_new(&attr);
 
   emscripten_websocket_set_onopen_callback(socket, NULL, OnOpen);
-  emscripten_websocket_set_onmessage_callback(socket, (void *)&fusion,
-                                              OnMessage);
+  emscripten_websocket_set_onmessage_callback(socket, (void *)&fusion, OnMessage);
   emscripten_websocket_set_onclose_callback(socket, NULL, OnClose);
 }
 } // namespace EMWebSocket
@@ -92,7 +92,8 @@ static void Connect(const char *url, Ezzoo::FusionCalculation &fusion) {
 class ExampleLayer : public Ezzoo::Layer {
 
 public:
-  ExampleLayer() : Layer("ExampleLayer") {
+  ExampleLayer() : Layer("ExampleLayer") 
+  {
     m_CubeVertexArray = Ezzoo::VertexArray::Create();
     m_CubeVertexArray->Bind();
     float cubeVertices[3 * 8] = {-0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f,
@@ -101,14 +102,12 @@ public:
                                  0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f};
     m_CubeVertexBuffer =
         Ezzoo::VertexBuffer::Create(cubeVertices, sizeof(cubeVertices));
-    m_CubeVertexBuffer->SetLayout(
-        {{Ezzoo::ShaderDataType::Float3, "a_Position"}});
+    m_CubeVertexBuffer->SetLayout({{Ezzoo::ShaderDataType::Float3, "a_Position"}});
     m_CubeVertexArray->AddVertexBuffer(m_CubeVertexBuffer);
     uint32_t cubeIndecies[36] = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4,
                                  4, 0, 3, 3, 7, 4, 1, 5, 6, 6, 2, 1,
                                  4, 5, 1, 1, 0, 4, 3, 2, 6, 6, 7, 3};
-    m_CubeIndexBuffer = Ezzoo::IndexBuffer::Create(
-        cubeIndecies, sizeof(cubeIndecies) / sizeof(uint32_t));
+    m_CubeIndexBuffer = Ezzoo::IndexBuffer::Create(cubeIndecies, sizeof(cubeIndecies) / sizeof(uint32_t));
     m_CubeVertexArray->SetIndexBuffer(m_CubeIndexBuffer);
 
     // floor
@@ -153,7 +152,7 @@ public:
     float B = ((2.0f * far * near) / zRange);
 
     m_PresProjection.SetPresProjection(distance, aspectRation, A, B);
-    m_Camera = Ezzoo::Camera(width, height, Ezzoo::Vector3f(0.0f, 0.0f, 0.0f),Ezzoo::Vector3f(0.0f, 0.0f, 1.0f),  Ezzoo::Vector3f(0.0f, 1.0f, 0.0f));
+    m_Camera = Ezzoo::Camera(width, height, Ezzoo::Vector3f(0.0f, 1.0f, -3.0f),Ezzoo::Vector3f(0.0f, 0.0f, 1.0f),  Ezzoo::Vector3f(0.0f, 1.0f, 0.0f));
 
     Ezzoo::FrameBufferSpecification specs;
     specs.Attachments = {Ezzoo::FrameBufferTextureFormate::RGBA8,Ezzoo::FrameBufferTextureFormate::Depth};
@@ -175,7 +174,7 @@ public:
 
     m_FrameBuffer->Bind();
 
-    Ezzoo::RendererCommand::SetClearColor({0.1f, 0.1f, 0.1f, 1.0f});
+    Ezzoo::RendererCommand::SetClearColor({0.529f, 0.808f, 0.9221f, 1.0f});
     Ezzoo::RendererCommand::ClearColor();
 
     // m_FrameBuffer->ClearAttachment(1, -1);
@@ -256,12 +255,11 @@ public:
     }*/
 
     uint32_t id = m_FrameBuffer->GetColorAttachmentRendererID();
-    ImGui::Image((ImTextureID)(uint64_t)(id),
-                 ImVec2{m_ViewPortSize.x, m_ViewPortSize.y}, ImVec2{0, 1},
-                 ImVec2{1, 0});
+    ImGui::Image((ImTextureID)(uint64_t)(id), ImVec2{m_ViewPortSize.x, m_ViewPortSize.y}, ImVec2{0, 1}, ImVec2{1, 0});
 
     ImGui::End();
 
+    ImGui::SetNextWindowBgAlpha(0.0f);
     ImGui::SetNextWindowPos(ImVec2{10.0f, 40.0f});
     ImGui::SetNextWindowSize({240.0f, 280.0f});
 

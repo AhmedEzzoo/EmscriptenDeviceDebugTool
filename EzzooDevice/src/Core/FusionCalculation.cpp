@@ -232,6 +232,7 @@ namespace Ezzoo {
        // ImGui::SetNextWindowPos(ImVec2(1000, 100));
         //ImGui::SetNextWindowSize(ImVec2(250, 370));
     
+        ImGui::SetNextWindowBgAlpha(0.0f);
         ImGui::SetNextWindowPos(ImVec2{685.0f, 40.0f});
         ImGui::SetNextItemWidth(200.0f);
         ImGui::Begin("Fusion Values");
